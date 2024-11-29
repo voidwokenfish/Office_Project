@@ -1,8 +1,11 @@
 import sqlite3
+import json
 from typing import List
 from pathlib import Path
 from services.models import RoomType, Item, ItemType
 from services.repository.repository import BaseItemRepository
+from services.services import EmptyFieldException, IdNotFoundException
+
 
 class SqlItemRepository(BaseItemRepository):
 
@@ -38,7 +41,7 @@ class SqlItemRepository(BaseItemRepository):
 
         return True
 
-    def update_item(self,item_id: int, item_name: str, item_type: int, item_room: int) -> bool:
+    def update_item(self, item_id: int, item_name: str, item_type: int, item_room: int) -> bool:
         self.cursor.execute("""
         UPDATE items SET item_name = ?, item_type = ?, item_room = ? WHERE item_id = ?
         """, (item_name, item_type, item_room, item_id))
@@ -88,6 +91,37 @@ class SqlItemRepository(BaseItemRepository):
         self.connection.commit()
 
         return True
+
+    def set_inventory_id_true(self, item_id: int) -> bool:
+        self.cursor.execute("""
+        UPDATE inventory_table SET inventory_state = 1 WHERE item_id = ?
+        """, (item_id,))
+        self.connection.commit()
+        return True
+
+    def add_inventory_history(self, date: str, info: list) -> bool:
+        self.cursor.execute("""
+        INSERT INTO inventory_history (date, info) VALUES (?, ?)
+        """, (date, info))
+        self.connection.commit()
+
+        return True
+
+    def id_exists_check(self, item_id: int) -> bool:
+        if item_id is None:
+            raise EmptyFieldException
+        self.cursor.execute("""
+        SELECT CASE WHEN EXISTS (SELECT 1 FROM inventory_table WHERE item_id = ?) THEN 1
+        ELSE 0
+        END AS result
+        """, (item_id,))
+        result = self.cursor.fetchone()[0]
+        if result is False:
+            raise IdNotFoundException
+        return bool(result)
+
+
+
 
 sql_relative_path = Path("../../storage/testbase.db")
 sql_abs_path = Path.resolve(sql_relative_path)

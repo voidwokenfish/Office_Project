@@ -38,3 +38,19 @@ class BaseItemRepository(BaseRepository):
     @abstractmethod
     def get_items_by_room(self, room: RoomType) -> List[Item]:
         pass
+
+    @abstractmethod
+    def set_inventory_table(self):
+        pass
+
+    @abstractmethod
+    def add_inventory_history(self):
+        pass
+
+    @abstractmethod
+    def set_inventory_id_true(self):
+        pass
+
+    @abstractmethod
+    def id_exists_check(self):
+        pass
