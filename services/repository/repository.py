@@ -1,56 +1,31 @@
 from abc import ABC, abstractmethod
 from typing import List
-from services.models import Item,ItemType,RoomType
+from services.models import BaseModel
 
 class BaseRepository(ABC):
-    pass
-
-class BaseItemRepository(BaseRepository):
 
     @abstractmethod
     def __init__(self):
         pass
 
     @abstractmethod
-    def get_item(self, id) -> Item:
+    def get(self, id: int):
         pass
 
     @abstractmethod
-    def get_items(self) -> List[Item]:
+    def list(self) -> List[BaseModel]:
         pass
 
     @abstractmethod
-    def add_item(self, item):
+    def add(self, entity: BaseModel) -> bool:
         pass
 
     @abstractmethod
-    def update_item(self, item):
+    def update(self, entity: BaseModel) -> bool:
         pass
 
     @abstractmethod
-    def delete_item(self, item):
+    def delete(self, entity: BaseModel) -> bool:
         pass
 
-    @abstractmethod
-    def get_items_by_type(self, type: ItemType) -> List[Item]:
-        pass
 
-    @abstractmethod
-    def get_items_by_room(self, room: RoomType) -> List[Item]:
-        pass
-
-    @abstractmethod
-    def set_inventory_table(self):
-        pass
-
-    @abstractmethod
-    def add_inventory_history(self):
-        pass
-
-    @abstractmethod
-    def set_inventory_id_true(self):
-        pass
-
-    @abstractmethod
-    def id_exists_check(self):
-        pass
