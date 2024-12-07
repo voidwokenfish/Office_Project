@@ -4,7 +4,7 @@ from typing import List
 from pathlib import Path
 from services.models import RoomType, Item, ItemType, BaseModel, ItemInventory
 from services.repository.repository import BaseRepository
-from services.exeptions import EmptyFieldException, IdNotFoundException
+from services.repository.exeptions import EmptyFieldException, IdNotFoundException
 
 
 class SqlItemRepository(BaseRepository):
@@ -13,7 +13,6 @@ class SqlItemRepository(BaseRepository):
         self.sqldb = sqldb
         self.connection = sqlite3.connect(sqldb)
         self.cursor = self.connection.cursor()
-
 
     def get(self, id) -> Item:
         self.cursor.execute("""
@@ -189,17 +188,8 @@ class SqlInventoryRepository(BaseRepository):
         if entity.id is None:
             raise EmptyFieldException
         self.cursor.execute("""
-                SELECT CASE WHEN EXISTS (SELECT 1 FROM inventory_table WHERE item_id = ?) THEN 1
-                ELSE 0
-                END AS result
-                """, (entity.id,))
-        result = self.cursor.fetchone()[0]
-        if result is False:
-            raise IdNotFoundException
-
-        self.cursor.execute("""
-        UPDATE inventory_table SET inventory_state = 1 WHERE item_id = ?;
-        """, (entity.id,))
+        UPDATE inventory_table SET inventory_state = ? WHERE item_id = ?;
+        """, (entity.id, entity.state))
         self.connection.commit()
 
         return True

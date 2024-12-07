@@ -1,0 +1,2 @@
+class IncorrectItemError(Exception):
+    pass

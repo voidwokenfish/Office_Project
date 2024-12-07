@@ -36,6 +36,10 @@ class Item(BaseModel):
 class ItemInventory(BaseModel):
     id: int
     state: int
+    items: list
     def __init__(self, id, state = 0):
         self.id = id
         self.state = state
+
+    def __len__(self):
+        return len(self.items)
