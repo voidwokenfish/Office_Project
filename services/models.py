@@ -35,7 +35,21 @@ class Item(BaseModel):
 
 class ItemInventory(BaseModel):
     id: int
-    state: int
-    def __init__(self, id, state = 0):
+    inventory_id: int
+    def __init__(self, inventory_id, item_id):
+        self.inventory_id = inventory_id
+        self.item_id = item_id
+
+
+class Inventory(BaseModel):
+    id: int
+    status: str
+    created_at: str
+    updated_at: str
+    def __init__(self,created_at, updated_at, status = "in progress", id = None):
         self.id = id
-        self.state = state
+        self.status = status
+        self.created_at = created_at
+        self.updated_at = updated_at
+
+

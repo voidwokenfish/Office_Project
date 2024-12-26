@@ -24,7 +24,7 @@ def create_tables(conn):
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS item_type_table (
         item_type INTEGER PRIMARY KEY,
-        item_name VARCHAR NOT NULL,
+        type_name VARCHAR NOT NULL,
         type_description VARCHAR NOT NULL,
         FOREIGN KEY (item_type) REFERENCES items (item_type) 
     )
@@ -40,15 +40,30 @@ def create_tables(conn):
     )
     """)
 
-    print("Создаем таблицу inventory_table")
+    print("Создаем таблицу inventories_progress_table")
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS inventory_table(
-        item_id INTEGER PRIMARY KEY,
-        inventory_state BOOLEAN NOT NULL,
+    CREATE TABLE IF NOT EXISTS inventories_progress_table (
+        inventory_id INTEGER PRIMARY KEY NOT NULL,
+        item_id INTEGER NOT NULL,
         FOREIGN KEY (item_id) REFERENCES items (item_id)
     )
     """)
+
+    print("Создаем таблицу inventories_table")
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS inventories_table (
+        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        status VARCHAR NOT NULL DEFAULT 'in progress',
+        created_at VARCHAR NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at VARCHAR NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (id) REFERENCES main.inventories_progress_table (inventory_id)
+    )
+    
+    """)
+
+
     conn.commit()
+
 
 def set_data(conn):
     """Наполняем таблицы данными"""
@@ -60,9 +75,9 @@ def set_data(conn):
     cursor.execute("INSERT INTO items (item_name, item_type, item_room) VALUES ('PrinterKyoceraDN540', 1, 2)")
     cursor.execute("INSERT INTO items (item_name, item_type, item_room) VALUES ('GoldenStatue', 3, 1)")
     print("Наполняем таблицу item_type_table")
-    cursor.execute("INSERT INTO item_type_table (item_type, item_name, type_description) VALUES (1, 'Electronics', 'Everything that works on electricity!')")
-    cursor.execute("INSERT INTO item_type_table (item_type, item_name, type_description) VALUES (2, 'Furniture', 'Tables, chairs, descks etc')")
-    cursor.execute("INSERT INTO item_type_table (item_type, item_name, type_description) VALUES (3, 'Miscellaneous', 'All that does not fit into other types')")
+    cursor.execute("INSERT INTO item_type_table (item_type, type_name, type_description) VALUES (1, 'Electronics', 'Everything that works on electricity!')")
+    cursor.execute("INSERT INTO item_type_table (item_type, type_name, type_description) VALUES (2, 'Furniture', 'Tables, chairs, descks etc')")
+    cursor.execute("INSERT INTO item_type_table (item_type, type_name, type_description) VALUES (3, 'Miscellaneous', 'All that does not fit into other types')")
     print("Наполняем таблицу item_room_table")
     cursor.execute("INSERT INTO item_room_table (item_room, room_name, room_description) VALUES (1, 'Office of the chief', 'Room where the boss is')")
     cursor.execute("INSERT INTO item_room_table (item_room, room_name, room_description) VALUES (2, 'Office room', 'Room where all the workers are')")
