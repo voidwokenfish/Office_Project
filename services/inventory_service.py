@@ -24,7 +24,7 @@ class ItemInventoryService:
 
         result = item_repo.list(item_type=item_type, room=room)
 
-        """ ТУТ СЕТАПИМ НОВУЮ ТАБЛИЦУ"""
+        """ЗАПИСЬ О НАЧАЛЕ ИНВЕНТАРИЗАЦИИ"""
         current_date = datetime.now().date
         all_inventories_repo.add(Inventory(current_date, current_date))
 
@@ -55,8 +55,15 @@ class ItemInventoryService:
         return True
 
 
-    def inventory_progress(self, entity: ItemInventory) -> bool:
+    def inventory_progress(self, entity: ItemInventory) -> list:
         pass
+
+
+
+    def unfound_ckeck(self):
+        all_items = item_repo.list()
+        inventoried_items = item_inventory_repo.list()
+
 
 
 

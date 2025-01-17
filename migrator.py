@@ -40,25 +40,25 @@ def create_tables(conn):
     )
     """)
 
+    print("Создаем таблицу inventories_table")
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS inventories_table (
+            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            status VARCHAR NOT NULL DEFAULT 'in progress',
+            created_at VARCHAR NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at VARCHAR NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (id) REFERENCES inventories_progress_table (inventory_id)
+        )
+        """)
+
     print("Создаем таблицу inventories_progress_table")
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS inventories_progress_table (
         inventory_id INTEGER PRIMARY KEY NOT NULL,
         item_id INTEGER NOT NULL,
-        FOREIGN KEY (item_id) REFERENCES items (item_id)
+        FOREIGN KEY (item_id) REFERENCES items (item_id),
+        FOREIGN KEY (inventory_id) REFERENCES inventories_table (id)
     )
-    """)
-
-    print("Создаем таблицу inventories_table")
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS inventories_table (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        status VARCHAR NOT NULL DEFAULT 'in progress',
-        created_at VARCHAR NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at VARCHAR NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (id) REFERENCES main.inventories_progress_table (inventory_id)
-    )
-    
     """)
 
 

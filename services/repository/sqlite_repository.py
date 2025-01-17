@@ -176,8 +176,25 @@ class SqlInventoryRepository(BaseRepository):
     def get(self, id: int):
         pass
 
-    def list(self) -> List[BaseModel]:
-        pass
+    def list(self, inventory_id: int = None, item_id: int = None) -> List[BaseModel]:
+        query = "SELECT * FROM inventories_progress_table WHERE 1=1"
+        params = []
+
+        if inventory_id is not None:
+            query += " AND inventory_id = ?"
+            params.append(inventory_id)
+
+        if item_id is not None:
+            query += " AND item_id = ?"
+            params.append(item_id)
+
+        self.cursor.execute(query, params)
+        result = self.cursor.fetchall()
+        items = []
+        for item in result:
+            items.append(item)
+
+        return items
 
     def add(self, entity: ItemInventory) -> bool:
         if entity.id is None:
