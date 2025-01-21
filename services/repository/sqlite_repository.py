@@ -4,7 +4,7 @@ from typing import List
 from pathlib import Path
 from services.models import Inventory, RoomType, Item, ItemType, BaseModel, ItemInventory
 from services.repository.repository import BaseRepository
-from services.repository.exeptions import EmptyFieldException, IdNotFoundException
+# from services.repository.exceptions import EmptyFieldException, IdNotFoundException
 from datetime import datetime
 
 
@@ -168,6 +168,8 @@ class SqlRoomRepository(BaseRepository):
 
 
 class SqlInventoryRepository(BaseRepository):
+    """table name - inventories_progress_table"""
+
     def __init__(self, sqldb: Path):
         self.sqldb = sqldb
         self.connection = sqlite3.connect(sqldb)
@@ -198,7 +200,7 @@ class SqlInventoryRepository(BaseRepository):
 
     def add(self, entity: ItemInventory) -> bool:
         if entity.id is None:
-            raise EmptyFieldException
+            raise ValueError
         self.cursor.execute("""
     INSERT INTO inventories_progress_table (inventory_id, item_id) VALUES (?, ?)
     """, (entity.inventory_id, entity.item_id))
@@ -207,7 +209,7 @@ class SqlInventoryRepository(BaseRepository):
 
     def update(self, entity: ItemInventory) -> bool: #PEREDELAT
         if entity.id is None:
-            raise EmptyFieldException
+            raise ValueError
         self.cursor.execute("""
         UPDATE inventories_progress_table SET item_id = ? WHERE item_id = ?;
         """, (entity.id, entity.id))
@@ -219,12 +221,8 @@ class SqlInventoryRepository(BaseRepository):
         pass
 
 
-
-
-
-
-
 class SqlAllInventoriesRepository(BaseRepository):
+    """table name - inventories_table"""
 
     def __init__(self, sqldb: Path):
         self.sqldb = sqldb
@@ -237,23 +235,23 @@ class SqlAllInventoriesRepository(BaseRepository):
         
         """, (id,))
         result = self.cursor.fetchone()
-        return Inventory(result[2], result[3], result[1], result[0])
+        return Inventory(result[2], result[3], result[1], result[0]) if result else None
 
     def list(self) -> List[BaseModel]:
         self.cursor.execute(""" 
         SELECT * FROM inventories_table
         """)
-        self.cursor.fetchall()
+        result = self.cursor.fetchall()
         list = []
 
-        for item in self.cursor:
+        for item in result:
             list.append(Inventory(item[2], item[3], item[1], item[0]))
         return list
 
     def add(self, entity: Inventory) -> bool:
         self.cursor.execute("""
         INSERT INTO inventories_table (created_at, updated_at) VALUES (?,?)
-        """)
+        """, (entity.created_at, entity.updated_at))
         self.connection.commit()
         return True
 
@@ -277,9 +275,7 @@ class SqlAllInventoriesRepository(BaseRepository):
         return True
 
 
-sql_relative_path = Path("../../storage/testbase.db")
-sql_abs_path = Path.resolve(sql_relative_path)
-sqlrepo = SqlItemRepository(sql_abs_path)
+
 
 
 

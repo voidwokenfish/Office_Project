@@ -51,5 +51,3 @@ class Inventory(BaseModel):
         self.status = status
         self.created_at = created_at
         self.updated_at = updated_at
-
-
