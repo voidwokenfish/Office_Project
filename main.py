@@ -2,6 +2,7 @@
 from services.repository.sqlite_repository import SqlInventoryRepository, SqlItemRepository, SqlAllInventoriesRepository
 from pathlib import Path
 from services.inventory_service import ItemInventoryService
+from exceptions import IncorrectTypeError
 
 
 

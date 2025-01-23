@@ -34,7 +34,7 @@ class Item(BaseModel):
         self.id = id
 
 class ItemInventory(BaseModel):
-    id: int
+    item_id: int
     inventory_id: int
     def __init__(self, inventory_id, item_id):
         self.inventory_id = inventory_id

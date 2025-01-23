@@ -54,7 +54,7 @@ def create_tables(conn):
     print("Создаем таблицу inventories_progress_table")
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS inventories_progress_table (
-        inventory_id INTEGER PRIMARY KEY NOT NULL,
+        inventory_id INTEGER NOT NULL,
         item_id INTEGER NOT NULL,
         FOREIGN KEY (item_id) REFERENCES items (item_id),
         FOREIGN KEY (inventory_id) REFERENCES inventories_table (id)

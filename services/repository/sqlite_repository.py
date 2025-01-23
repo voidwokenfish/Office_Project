@@ -4,11 +4,13 @@ from typing import List
 from pathlib import Path
 from services.models import Inventory, RoomType, Item, ItemType, BaseModel, ItemInventory
 from services.repository.repository import BaseRepository
-# from services.repository.exceptions import EmptyFieldException, IdNotFoundException
+from services.repository.exceptions import EmptyFieldException, IdNotFoundException
 from datetime import datetime
 
 
 class SqlItemRepository(BaseRepository):
+    """table name - items"""
+
 
     def __init__(self, sqldb: Path):
         self.sqldb = sqldb
@@ -21,6 +23,7 @@ class SqlItemRepository(BaseRepository):
         SELECT * FROM items WHERE item_id = ?; 
         """, (id,))
         result = self.cursor.fetchone()
+
         return Item(result[1],result[2],result[3],result[0])
 
     def list(self, item_type: ItemType = None, room: RoomType = None) -> List[Item]:
@@ -69,6 +72,7 @@ class SqlItemRepository(BaseRepository):
 
 
 class SqlTypeRepository(BaseRepository):
+    """table name - item_type_table"""
 
     def __init__(self, sqldb: Path):
         self.sqldb = sqldb
@@ -119,6 +123,8 @@ class SqlTypeRepository(BaseRepository):
         return True
 
 class SqlRoomRepository(BaseRepository):
+    """table name - item_room_table"""
+
     def __init__(self, sqldb: Path):
         self.sqldb = sqldb
         self.connection = sqlite3.connect(sqldb)
@@ -199,8 +205,8 @@ class SqlInventoryRepository(BaseRepository):
         return items
 
     def add(self, entity: ItemInventory) -> bool:
-        if entity.id is None:
-            raise ValueError
+        if entity.item_id is None:
+            raise IdNotFoundException
         self.cursor.execute("""
     INSERT INTO inventories_progress_table (inventory_id, item_id) VALUES (?, ?)
     """, (entity.inventory_id, entity.item_id))
@@ -208,11 +214,11 @@ class SqlInventoryRepository(BaseRepository):
         return True
 
     def update(self, entity: ItemInventory) -> bool: #PEREDELAT
-        if entity.id is None:
-            raise ValueError
+        if entity.item_id is None:
+            raise IdNotFoundException
         self.cursor.execute("""
         UPDATE inventories_progress_table SET item_id = ? WHERE item_id = ?;
-        """, (entity.id, entity.id))
+        """, (entity.item_id, entity.item_id))
         self.connection.commit()
 
         return True
@@ -256,15 +262,19 @@ class SqlAllInventoriesRepository(BaseRepository):
         return True
 
     def update(self, entity: Inventory, status: str = None) -> bool:
-        query = "UPDATE inventories_table SET updated_at = ? WHERE id = ?"
-        params = [datetime.now(), entity.id]
+        query = "UPDATE inventories_table SET updated_at = ?"
+        params = [datetime.now()]
 
         if status is not None:
-            query += " AND status = ?"
+            query += ", status = ?"
             params.append(status)
+
+        query += " WHERE id = ?"
+        params.append(entity.id)
 
 
         self.cursor.execute(query, params)
+        self.connection.commit()
         return True
 
     def delete(self, entity: Inventory) -> bool:

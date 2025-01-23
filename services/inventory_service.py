@@ -1,5 +1,6 @@
 from .models import BaseModel, Item, ItemType, RoomType, ItemInventory, Inventory
 from services.exceptions import *
+from .repository.exceptions import IdAlreadyInventoriedException, IdNotFoundException
 from .repository.sqlite_repository import SqlItemRepository, SqlInventoryRepository, SqlAllInventoriesRepository
 # from main import item_repo, item_inventory_repo, all_inventories_repo
 from datetime import datetime
@@ -14,7 +15,6 @@ class ItemInventoryService:
 
     def __init__(self, item_repo: SqlItemRepository, item_inventory_repo: SqlInventoryRepository, all_inventories_repo: SqlAllInventoriesRepository):
         self.inventoried_list = []
-        self.unfound_items = []
         self.total_items = 0
         self.item_inventory_repo = item_inventory_repo
         self.item_repo = item_repo
@@ -28,46 +28,70 @@ class ItemInventoryService:
         """ЗАПИСЬ О НАЧАЛЕ ИНВЕНТАРИЗАЦИИ"""
         current_date = datetime.now().strftime("%d-%m-%Y")
         self.all_inventories_repo.add(Inventory(current_date, current_date))
-        self.inventory_id = self.all_inventories_repo.list()[-1]
+        current_inventory = self.all_inventories_repo.list()[-1]
+        self.inventory_id = current_inventory.id
 
         self.total_items = len(result)
+        print(f"Inventory {self.inventory_id} started")
         return True
+
+    def is_item_in_inventory(self, item_id: int, inventory_id: int) -> bool:
+
+        inventory_items = self.item_inventory_repo.list(inventory_id=inventory_id)
+        for row in inventory_items:
+            if row[1] == item_id:
+                return True
+        return False
 
     def inventory_item(self, item_id: int, inventory_id: int) -> bool:
+        try:
+            entity = self.item_repo.get(item_id)
+        except IdNotFoundException:
+            print(f"Данный id {item_id} не найден.")
+            return False
 
-        entity = self.item_repo.get(item_id)
-        inventory = self.all_inventories_repo.get(inventory_id)
+        if self.is_item_in_inventory(item_id, inventory_id):
+            print(f"Предмет с id {item_id} уже был добавлен.")
+            return False
         try:
 
-            self.item_inventory_repo.add(ItemInventory(item_id=entity.id, inventory_id=inventory.id))
+            self.item_inventory_repo.add(ItemInventory(item_id=entity.id, inventory_id=self.inventory_id))
 
-        except ValueError:
-
-            raise IncorrectItemError
-
-        else:
-            self.inventoried_list.append(entity)
-            return True
+        except IdAlreadyInventoriedException:
+            print("No")
+            return False
 
 
-    def finish_inventory(self):
-        # found_items = []
-        # unfound_items = []
-
-        self.all_inventories_repo.update(self.inventory_id, status="finished")
-
-        print(f"Найдено - {len(self.inventoried_list)}\nНе найдено - {len(self.unfound_items)}\nСписок найденных - {[i[0] for i in self.inventoried_list]}")
         return True
 
+    def finish_inventory(self):
 
-    def inventory_progress(self, entity: ItemInventory) -> list:
-        pass
-
-
-
-    def unfound_ckeck(self):
         all_items = self.item_repo.list()
-        inventoried_items = self.item_inventory_repo.list()
+
+        found_items_ids = [
+            row[1]  # item_id
+            for row in self.item_inventory_repo.list(inventory_id=self.inventory_id)
+        ]
+
+        found_items = [
+            {"id": item_id, "name": self.item_repo.get(item_id).name}
+            for item_id in found_items_ids
+        ]
+
+        unfound_items = [
+            {"id": item.id, "name": item.name}
+            for item in all_items
+            if item.id not in found_items_ids
+        ]
+
+        to_be_finished_inv = self.all_inventories_repo.get(self.inventory_id)
+        result = self.all_inventories_repo.update(to_be_finished_inv, status="finished")
+
+        print(f"Inventory {self.inventory_id} finished successfully: {result}")
+        print(f"Found items: {found_items}")
+        print(f"Unfound items: {unfound_items}")
+
+        return found_items, unfound_items
 
 
 

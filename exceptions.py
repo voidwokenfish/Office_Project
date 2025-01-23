@@ -1,0 +1,2 @@
+class IncorrectTypeError(Exception):
+    pass
