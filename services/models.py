@@ -1,6 +1,7 @@
 class BaseModel:
     pass
 
+
 class RoomType(BaseModel):
     room_name: str
     description: str
@@ -24,8 +25,8 @@ class ItemType(BaseModel):
 class Item(BaseModel):
     id: int
     name: str
-    type: ItemType
-    room: RoomType
+    type: int
+    room: int
 
     def __init__(self, name, type, room, id = None):
         self.name = name

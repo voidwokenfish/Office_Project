@@ -1,27 +1,28 @@
+from xml.dom.minidom import Entity
+
 from .models import BaseModel, Item, ItemType, RoomType, ItemInventory, Inventory
 from services.exceptions import *
 from .repository.exceptions import IdAlreadyInventoriedException, IdNotFoundException
-from .repository.sqlite_repository import SqlItemRepository, SqlInventoryRepository, SqlAllInventoriesRepository
-# from main import item_repo, item_inventory_repo, all_inventories_repo
+from .repository.sqlite_repository import SqlItemRepository, SqlInventoryRepository, SqlAllInventoriesRepository, \
+    SqlRoomRepository, SqlTypeRepository
 from datetime import datetime
-# from repository.repository import BaseRepository
-# from repository import repository, sqlite_repository
-# from pathlib import Path
-# from repository.exceptions import *
+
 
 class ItemInventoryService:
     inventoried_list: list
     total_items: int
 
-    def __init__(self, item_repo: SqlItemRepository, item_inventory_repo: SqlInventoryRepository, all_inventories_repo: SqlAllInventoriesRepository):
+    def __init__(self, item_repo: SqlItemRepository, room_repo: SqlRoomRepository, type_repo: SqlTypeRepository, item_inventory_repo: SqlInventoryRepository, all_inventories_repo: SqlAllInventoriesRepository):
         self.inventoried_list = []
         self.total_items = 0
         self.item_inventory_repo = item_inventory_repo
         self.item_repo = item_repo
+        self.room_repo = room_repo
+        self.type_repo = type_repo
         self.all_inventories_repo = all_inventories_repo
         self.inventory_id = None
 
-    def start_inventory(self, item_type: ItemType = None, room: RoomType = None) -> bool:
+    def start_inventory(self, item_type: ItemType = None, room: RoomType = None) -> Inventory:
 
         result = self.item_repo.list(item_type=item_type, room=room)
 
@@ -30,69 +31,117 @@ class ItemInventoryService:
         self.all_inventories_repo.add(Inventory(current_date, current_date))
         current_inventory = self.all_inventories_repo.list()[-1]
         self.inventory_id = current_inventory.id
+        inv = self.all_inventories_repo.get(self.inventory_id)
 
         self.total_items = len(result)
         print(f"Inventory {self.inventory_id} started")
-        return True
+        return inv
 
-    def is_item_in_inventory(self, item_id: int, inventory_id: int) -> bool:
+    def is_item_in_inventory(self, entity: ItemInventory) -> bool:
 
-        inventory_items = self.item_inventory_repo.list(inventory_id=inventory_id)
+        inventory_items = self.item_inventory_repo.list(inventory_id=entity.inventory_id)
         for row in inventory_items:
-            if row[1] == item_id:
+            if row.item_id == entity.item_id:
                 return True
         return False
 
-    def inventory_item(self, item_id: int, inventory_id: int) -> bool:
+    def inventory_item(self, item_id: int) -> tuple or None:
         try:
             entity = self.item_repo.get(item_id)
-        except IdNotFoundException:
-            print(f"Данный id {item_id} не найден.")
-            return False
+        except IdNotFoundException as e:
+            raise IncorrectItemError(f"Ошибка {e}")
 
-        if self.is_item_in_inventory(item_id, inventory_id):
-            print(f"Предмет с id {item_id} уже был добавлен.")
-            return False
         try:
+            inventoried_item = ItemInventory(self.inventory_id, item_id)
+            if self.is_item_in_inventory(inventoried_item):
+                raise IdAlreadyInventoriedException(f"Предмет с id {inventoried_item.item_id} уже был добавлен")
 
-            self.item_inventory_repo.add(ItemInventory(item_id=entity.id, inventory_id=self.inventory_id))
-
-        except IdAlreadyInventoriedException:
-            print("No")
-            return False
-
-
-        return True
-
-    def finish_inventory(self):
-
-        all_items = self.item_repo.list()
-
-        found_items_ids = [
-            row[1]  # item_id
-            for row in self.item_inventory_repo.list(inventory_id=self.inventory_id)
-        ]
-
-        found_items = [
-            {"id": item_id, "name": self.item_repo.get(item_id).name}
-            for item_id in found_items_ids
-        ]
-
-        unfound_items = [
-            {"id": item.id, "name": item.name}
-            for item in all_items
-            if item.id not in found_items_ids
-        ]
-
-        to_be_finished_inv = self.all_inventories_repo.get(self.inventory_id)
-        result = self.all_inventories_repo.update(to_be_finished_inv, status="finished")
-
-        print(f"Inventory {self.inventory_id} finished successfully: {result}")
-        print(f"Found items: {found_items}")
-        print(f"Unfound items: {unfound_items}")
-
-        return found_items, unfound_items
+            self.item_inventory_repo.add(inventoried_item)
+        except IdAlreadyInventoriedException as e:
+            return None
 
 
+        type = self.type_repo.get(entity.type)
+        room = self.room_repo.get(entity.room)
 
 
+        return entity, type, room
+
+    def finish_inventory(self) -> tuple:
+        try:
+            all_items = self.item_repo.list()
+
+            found_items_ids = [
+                row[0]  # item_id
+                for row in self.item_inventory_repo.list(inventory_id=self.inventory_id)
+            ]
+
+            found_items = []
+            for item_id in found_items_ids:
+                item = self.item_repo.get(item_id)
+                if item is not None:
+
+                    item_type = self.type_repo.get(item.type) if isinstance(item.type, int) else item.type
+                    item_room = self.room_repo.get(item.room) if isinstance(item.room, int) else item.room
+                    print(f"item_type from repo: {item_type}, type of item_type: {type(item_type)}")
+                    print(f"item_room from repo: {item_room}, type of item_room: {type(item_room)}")
+
+                    print(f"item_type: {item_type}, item_room: {item_room}")
+
+                    found_items.append({
+                        "id": item.id,
+                        "name": item.name,
+                        "type": item_type.type_name if isinstance(item_type, ItemType) else "Unknown",
+                        "room": item_room.room_name if isinstance(item_room, RoomType) else "Unknown",
+                    })
+
+
+            unfound_items = []
+            for item in all_items:
+                if item.id not in found_items_ids:
+                    item = self.item_repo.get(item.id)
+                    if item is not None:
+
+                        item_type = self.type_repo.get(item.type) if isinstance(item.type, int) else item.type
+                        item_room = self.room_repo.get(item.room) if isinstance(item.room, int) else item.room
+
+                        unfound_items.append({
+                            "id": item.id,
+                            "name": item.name,
+                            "type": item_type.type_name if isinstance(item_type, ItemType) else "Unknown",
+                            "room": item_room.room_name if isinstance(item_room, RoomType) else "Unknown",
+                        })
+
+
+            to_be_finished_inv = self.all_inventories_repo.get(self.inventory_id)
+            self.all_inventories_repo.update(to_be_finished_inv, status="finished")
+            finished_inv = self.all_inventories_repo.get(self.inventory_id)
+
+            print(f"Inventory {self.inventory_id} finished successfully: {finished_inv}")
+            print(f"Found items: {found_items}")
+            print(f"Unfound items: {unfound_items}")
+
+            return found_items, unfound_items, finished_inv
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            import traceback
+            traceback.print_exc()
+
+
+    def cancel_ongoing_inv(self) -> Entity:
+        to_be_canceled_inv = self.all_inventories_repo.get(self.inventory_id)
+        self.all_inventories_repo.update(to_be_canceled_inv, status="canceled")
+        canceled_inv = self.all_inventories_repo.get(self.inventory_id)
+        return canceled_inv
+
+
+    def get_all_inv_info(self) -> tuple:
+        result = self.all_inventories_repo.list()
+        length = len(result)
+        return length, result
+
+    def get_entities_info(self) -> tuple:
+        result = self.item_repo.list()
+        length = len(result)
+        return length, result

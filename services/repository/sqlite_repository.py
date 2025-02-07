@@ -23,6 +23,8 @@ class SqlItemRepository(BaseRepository):
         SELECT * FROM items WHERE item_id = ?; 
         """, (id,))
         result = self.cursor.fetchone()
+        if result is None:
+            raise IdNotFoundException(f"Предмет с id {id} не найден.")
 
         return Item(result[1],result[2],result[3],result[0])
 
@@ -40,6 +42,7 @@ class SqlItemRepository(BaseRepository):
 
         self.cursor.execute(query, params)
         result = self.cursor.fetchall()
+
         items = []
         for item in result:
             items.append(Item(item[1], item[2], item[3], item[0]))
@@ -117,7 +120,7 @@ class SqlTypeRepository(BaseRepository):
     def delete(self, entity: ItemType) -> bool:
         self.cursor.execute("""
                 DELETE FROM item_type_table WHERE item_type = ?;
-                """, (entity.item_type))
+                """, (entity.item_type,))
         self.connection.commit()
 
         return True
@@ -135,7 +138,7 @@ class SqlRoomRepository(BaseRepository):
                         SELECT * FROM item_room_table WHERE item_room = ?; 
                         """, (id,))
         result = self.cursor.fetchone()
-        return ItemType(result[0], result[1], result[2])
+        return RoomType(result[0], result[1], result[2])
 
     def list(self) -> List[RoomType]:
         self.cursor.execute("""
@@ -200,7 +203,7 @@ class SqlInventoryRepository(BaseRepository):
         result = self.cursor.fetchall()
         items = []
         for item in result:
-            items.append(item)
+            items.append(ItemInventory(item[0], item[1]))
 
         return items
 
@@ -263,7 +266,7 @@ class SqlAllInventoriesRepository(BaseRepository):
 
     def update(self, entity: Inventory, status: str = None) -> bool:
         query = "UPDATE inventories_table SET updated_at = ?"
-        params = [datetime.now()]
+        params = [datetime.now().strftime("%d-%m-%Y")]
 
         if status is not None:
             query += ", status = ?"
