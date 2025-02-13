@@ -40,9 +40,16 @@ class ItemInventoryService:
     def is_item_in_inventory(self, entity: ItemInventory) -> bool:
 
         inventory_items = self.item_inventory_repo.list(inventory_id=entity.inventory_id)
+        print(f"📦 Загруженные предметы из БД: {inventory_items} ({type(inventory_items)})")
         for row in inventory_items:
-            if row.item_id == entity.item_id:
+            print(f"⚡ Проверяем {row.item_id} ({type(row.item_id)}) == {entity.item_id} ({type(entity.item_id)})")
+            print(f"⚡ Проверяем {row.inventory_id} ({type(row.inventory_id)}) == {entity.inventory_id} ({type(entity.inventory_id)})")
+
+            if row.item_id == int(entity.item_id) and row.inventory_id == entity.inventory_id:
+                print("✅ Найден предмет! Возвращаем True")
                 return True
+
+        print("❌ Предмет НЕ найден! Возвращаем False")
         return False
 
     def inventory_item(self, item_id: int) -> tuple or None:
@@ -51,19 +58,15 @@ class ItemInventoryService:
         except IdNotFoundException as e:
             raise IncorrectItemError(f"Ошибка {e}")
 
-        try:
-            inventoried_item = ItemInventory(self.inventory_id, item_id)
-            if self.is_item_in_inventory(inventoried_item):
-                raise IdAlreadyInventoriedException(f"Предмет с id {inventoried_item.item_id} уже был добавлен")
 
-            self.item_inventory_repo.add(inventoried_item)
-        except IdAlreadyInventoriedException as e:
-            return None
+        inventoried_item = ItemInventory(self.inventory_id, item_id)
+        if self.is_item_in_inventory(inventoried_item):
+            raise IdAlreadyInventoriedException(f"Предмет с id {inventoried_item.item_id} уже был добавлен")
 
+        self.item_inventory_repo.add(inventoried_item)
 
         type = self.type_repo.get(entity.type)
         room = self.room_repo.get(entity.room)
-
 
         return entity, type, room
 
@@ -141,7 +144,52 @@ class ItemInventoryService:
         length = len(result)
         return length, result
 
-    def get_entities_info(self) -> tuple:
-        result = self.item_repo.list()
-        length = len(result)
-        return length, result
+    def get_entities_info(self, filter: str) -> tuple:
+        try:
+            if filter == "item":
+                result = self.item_repo.list()
+            elif filter == "type":
+                result = self.type_repo.list()
+            elif filter == "room":
+                result = self.room_repo.list()
+            else:
+                raise ValueError("Передан неверный фильтр")
+            length = len(result)
+            return length, result
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def add_entity(self, filter, *args):
+        try:
+            if filter == "item":
+                name, type, room = args
+                item = Item(name, type, room)
+                self.item_repo.add(item)
+                item.id = self.item_repo.cursor.lastrowid
+                print(item.id, item.name, item.type, item.room)
+                return item
+
+            elif filter == "type":
+                id, name, desc = args
+                type = ItemType(id, name, desc)
+                self.type_repo.add(type)
+                return type
+
+            elif filter == "room":
+                id, name, desc = args
+                room = RoomType(id, name, desc)
+                self.room_repo.add(room)
+                return room
+
+            else:
+                raise ValueError("Некорректный фильтр")
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            import traceback
+            traceback.print_exc()
+
+

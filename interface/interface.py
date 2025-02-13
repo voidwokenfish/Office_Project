@@ -6,13 +6,19 @@ from services.inventory_service import ItemInventoryService
 from gui import *
 import sys
 
+from services.repository.exceptions import IdAlreadyInventoriedException
+
+
 class MyWindow(QtWidgets.QMainWindow):
     def __init__(self, inventory_service, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.inventory_service = inventory_service
+        self.ui.tabWidget.setCurrentIndex(0)
         self.ui.lineEdit.setValidator(QIntValidator(0, 9999999))
+        self.ui.typecodeLine.setValidator(QIntValidator(0, 9999999))
+        self.ui.roomcodeLine.setValidator(QIntValidator(0, 9999999))
         self.ui.currentInvTable.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.ui.progressBar.setValue(0)
         self.item_inventoried_tuple = ()
@@ -21,6 +27,9 @@ class MyWindow(QtWidgets.QMainWindow):
         self.ui.inventoryIdButton.clicked.connect(self.inventory_item)
         self.ui.finishInvButton.clicked.connect(self.finish_inv)
         self.ui.cancelInvButton.clicked.connect(self.show_confirmation)
+        self.ui.additemButton.clicked.connect(self.create_item)
+        self.ui.addtypeButton.clicked.connect(self.create_type)
+        self.ui.addroomButton.clicked.connect(self.create_room)
 
     def make_inactive_stage(self):
         self.ui.inventoryIdButton.setEnabled(False)
@@ -70,12 +79,11 @@ class MyWindow(QtWidgets.QMainWindow):
 
     def setup_items_table(self):
         try:
-            data = self.inventory_service.get_entities_info()
+            data = self.inventory_service.get_entities_info("item")
             rows = data[0]
             info = data[1]
 
             self.ui.itemsTable.setRowCount(0)
-            self.ui.itemsTable.verticalHeader().setVisible(False)
 
             for i in range(rows):
                 self.ui.itemsTable.insertRow(i)
@@ -84,6 +92,55 @@ class MyWindow(QtWidgets.QMainWindow):
                 self.ui.itemsTable.setItem(i, 1, QTableWidgetItem(str(info[i].name)))
                 self.ui.itemsTable.setItem(i, 2, QTableWidgetItem(str(info[i].type)))
                 self.ui.itemsTable.setItem(i, 3, QTableWidgetItem(str(info[i].room)))
+            self.ui.itemsTable.resizeRowsToContents()
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def setup_types_table(self):
+        try:
+            data = self.inventory_service.get_entities_info("type")
+            rows = data[0]
+            info = data[1]
+
+            self.ui.typeTable.setRowCount(0)
+
+            for i in range(rows):
+                self.ui.typeTable.insertRow(i)
+
+                self.ui.typeTable.setItem(i, 0, QTableWidgetItem(str(info[i].item_type)))
+                self.ui.typeTable.setItem(i, 1, QTableWidgetItem(str(info[i].type_name)))
+                self.ui.typeTable.setItem(i, 2, QTableWidgetItem(str(info[i].description)))
+            self.ui.typeTable.resizeRowsToContents()
+
+
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            import traceback
+            traceback.print_exc()
+
+
+
+    def setup_rooms_table(self):
+        try:
+            data = self.inventory_service.get_entities_info("room")
+            rows = data[0]
+            info = data[1]
+
+            self.ui.roomTable.setRowCount(0)
+
+            for i in range(rows):
+                self.ui.roomTable.insertRow(i)
+
+                self.ui.roomTable.setItem(i, 0, QTableWidgetItem(str(info[i].item_room)))
+                self.ui.roomTable.setItem(i, 1, QTableWidgetItem(str(info[i].room_name)))
+                self.ui.roomTable.setItem(i, 2, QTableWidgetItem(str(info[i].description)))
+            self.ui.roomTable.resizeRowsToContents()
+
+
 
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -127,11 +184,8 @@ class MyWindow(QtWidgets.QMainWindow):
     def inventory_item(self, row_position=None):
         try:
             item_id = self.ui.lineEdit.text()
-            try:
-                result = self.inventory_service.inventory_item(item_id)
-            except IncorrectItemError as e:
-                self.ui.statusbar.showMessage(f"Предмет с id {item_id} не найден")
-                return
+
+            result = self.inventory_service.inventory_item(item_id)
 
 
 
@@ -160,6 +214,13 @@ class MyWindow(QtWidgets.QMainWindow):
             self.ui.lineEdit.clear()
 
             self.update_progressbar()
+
+        except IncorrectItemError as e:
+            self.ui.statusbar.showMessage(f"Предмет с id {item_id} не найден")
+            return
+        except IdAlreadyInventoriedException as e:
+            self.ui.statusbar.showMessage(f"Предмет с id {item_id} уже был добавлен")
+            return
 
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -242,6 +303,108 @@ class MyWindow(QtWidgets.QMainWindow):
         self.ui.inventoriesTable.setItem(row, 1, QTableWidgetItem(inv.status))
         self.make_inactive_stage()
         self.ui.statusbar.showMessage(f'inventory {self.inventory_service.inventory_id} canceled')
+
+    def fill_typebox(self):
+        self.ui.itemtypesBox.clear()
+
+        row_count = self.ui.typeTable.rowCount()
+        for row in range(row_count):
+            item_name = self.ui.typeTable.item(row, 1).text()
+            item_id = int(self.ui.typeTable.item(row, 0).text())
+
+            self.ui.itemtypesBox.addItem(item_name, item_id)
+
+    def fill_roombox(self):
+        self.ui.itemroomBox.clear()
+
+        row_count = self.ui.roomTable.rowCount()
+        for row in range(row_count):
+            item_name = self.ui.roomTable.item(row, 1).text()
+            item_id = int(self.ui.roomTable.item(row, 0).text())
+
+            self.ui.itemroomBox.addItem(item_name, item_id)
+
+    def create_item(self):
+        try:
+            name = self.ui.nameLine.text()
+            type = self.ui.itemtypesBox.currentData()
+            room = self.ui.itemroomBox.currentData()
+            item = self.inventory_service.add_entity("item", name, type, room)
+
+            row_position = self.ui.itemsTable.rowCount()
+            self.ui.itemsTable.insertRow(row_position)
+
+            self.ui.itemsTable.setItem(row_position, 0, QtWidgets.QTableWidgetItem(str(item.id)))
+            self.ui.itemsTable.setItem(row_position, 1, QtWidgets.QTableWidgetItem(item.name))
+            self.ui.itemsTable.setItem(row_position, 2, QtWidgets.QTableWidgetItem(str(item.type)))
+            self.ui.itemsTable.setItem(row_position, 3, QtWidgets.QTableWidgetItem(str(item.room)))
+
+            self.ui.nameLine.clear()
+
+            self.ui.itemsTable.resizeRowsToContents()
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def create_type(self):
+        try:
+            name = self.ui.typenameLine.text()
+            type = self.ui.typecodeLine.text()
+            room = self.ui.typedescLine.text()
+            entity = self.inventory_service.add_entity("type", type, name, room)
+
+            row_position = self.ui.typeTable.rowCount()
+            self.ui.typeTable.insertRow(row_position)
+
+            self.ui.typeTable.setItem(row_position, 0, QtWidgets.QTableWidgetItem(str(entity.item_type)))
+            self.ui.typeTable.setItem(row_position, 1, QtWidgets.QTableWidgetItem(entity.type_name))
+            self.ui.typeTable.setItem(row_position, 2, QtWidgets.QTableWidgetItem(entity.description))
+
+            self.ui.typenameLine.clear()
+            self.ui.typecodeLine.clear()
+            self.ui.typedescLine.clear()
+
+            self.ui.typeTable.resizeRowsToContents()
+
+            self.fill_typebox()
+
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def create_room(self):
+        try:
+            name = self.ui.roomnameLine.text()
+            code = self.ui.roomcodeLine.text()
+            desc = self.ui.roomdescLine.text()
+            entity = self.inventory_service.add_entity("room", code, name, desc)
+
+            row_position = self.ui.roomTable.rowCount()
+            self.ui.roomTable.insertRow(row_position)
+
+            self.ui.roomTable.setItem(row_position, 0, QtWidgets.QTableWidgetItem(str(entity.item_room)))
+            self.ui.roomTable.setItem(row_position, 1, QtWidgets.QTableWidgetItem(entity.room_name))
+            self.ui.roomTable.setItem(row_position, 2, QtWidgets.QTableWidgetItem(entity.description))
+
+            self.ui.roomnameLine.clear()
+            self.ui.roomcodeLine.clear()
+            self.ui.roomdescLine.clear()
+
+            self.ui.roomTable.resizeRowsToContents()
+
+            self.fill_roombox()
+
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            import traceback
+            traceback.print_exc()
+
+
 
 
 

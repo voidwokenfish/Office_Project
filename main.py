@@ -57,7 +57,11 @@ if __name__ == '__main__':
     myapp = MyWindow(inventory_service)
     myapp.setup_all_inv_tables()
     myapp.setup_items_table()
+    myapp.setup_types_table()
+    myapp.setup_rooms_table()
     myapp.make_inactive_stage()
+    myapp.fill_typebox()
+    myapp.fill_roombox()
     myapp.show()
     sys.exit(app.exec_())
 

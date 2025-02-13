@@ -47,7 +47,7 @@ class Inventory(BaseModel):
     status: str
     created_at: str
     updated_at: str
-    def __init__(self,created_at, updated_at, status = "in progress", id = None):
+    def __init__(self, created_at, updated_at, status = "in progress", id = None):
         self.id = id
         self.status = status
         self.created_at = created_at

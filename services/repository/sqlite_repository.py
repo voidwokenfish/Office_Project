@@ -52,7 +52,7 @@ class SqlItemRepository(BaseRepository):
     def add(self, entity: Item) -> bool:
         self.cursor.execute("""
         INSERT INTO items (item_name, item_type, item_room) VALUES (?,?,?)
-        """, (object,))
+        """, (entity.name, entity.type, entity.room))
         self.connection.commit()
 
         return True
@@ -102,9 +102,10 @@ class SqlTypeRepository(BaseRepository):
         return list
 
     def add(self, entity: ItemType) -> bool:
+        print(f"type = {type(entity.item_type)}, name = {type(entity.type_name)}, desc = {type(entity.description)}")
         self.cursor.execute("""
                 INSERT INTO item_type_table (item_type, type_name, type_description) VALUES (?,?,?)
-                """, (entity.item_type, entity.type_name, entity.description))
+                """, (int(entity.item_type), entity.type_name, entity.description))
         self.connection.commit()
 
         return True
@@ -154,7 +155,7 @@ class SqlRoomRepository(BaseRepository):
     def add(self, entity: RoomType) -> bool:
         self.cursor.execute("""
                 INSERT INTO item_room_table (item_room, room_name, room_description) VALUES (?,?,?)
-                """, (entity.item_room, entity.room_name, entity.description))
+                """, (int(entity.item_room), entity.room_name, entity.description))
         self.connection.commit()
 
         return True
@@ -199,12 +200,15 @@ class SqlInventoryRepository(BaseRepository):
             query += " AND item_id = ?"
             params.append(item_id)
 
+        print(f"🛠 SQL: {query}, Params: {params}")
+
         self.cursor.execute(query, params)
         result = self.cursor.fetchall()
+        print(f"📦 fetchall() вернул: {result} ({type(result)})")
         items = []
         for item in result:
             items.append(ItemInventory(item[0], item[1]))
-
+        print(f"✅ Возвращаем items: {items}")
         return items
 
     def add(self, entity: ItemInventory) -> bool:
