@@ -188,7 +188,7 @@ class SqlInventoryRepository(BaseRepository):
     def get(self, id: int):
         pass
 
-    def list(self, inventory_id: int = None, item_id: int = None) -> List[BaseModel]:
+    def list(self, inventory_id: int = None, item_id: int = None) -> List[ItemInventory]:
         query = "SELECT * FROM inventories_progress_table WHERE 1=1"
         params = []
 
@@ -200,15 +200,12 @@ class SqlInventoryRepository(BaseRepository):
             query += " AND item_id = ?"
             params.append(item_id)
 
-        print(f"🛠 SQL: {query}, Params: {params}")
-
         self.cursor.execute(query, params)
         result = self.cursor.fetchall()
-        print(f"📦 fetchall() вернул: {result} ({type(result)})")
+
         items = []
         for item in result:
             items.append(ItemInventory(item[0], item[1]))
-        print(f"✅ Возвращаем items: {items}")
         return items
 
     def add(self, entity: ItemInventory) -> bool:

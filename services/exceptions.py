@@ -3,3 +3,12 @@ class IncorrectTypeError(Exception):
 
 class IncorrectItemError(Exception):
     pass
+
+class EmptyFieldError(Exception):
+    pass
+
+class IdAlreadyInventoriedException(Exception):
+    pass
+
+class EntityCodeIsUsedException(Exception):
+    pass

@@ -1,12 +1,12 @@
 from PyQt5.QtGui import QIntValidator
 from PyQt5.QtWidgets import QMainWindow, QHeaderView, QTableWidgetItem
 
-from services.exceptions import IncorrectItemError
+from services.exceptions import IncorrectItemError, EmptyFieldError
 from services.inventory_service import ItemInventoryService
 from gui import *
 import sys
 
-from services.repository.exceptions import IdAlreadyInventoriedException
+from services.exceptions import IdAlreadyInventoriedException, EntityCodeIsUsedException
 
 
 class MyWindow(QtWidgets.QMainWindow):
@@ -115,8 +115,6 @@ class MyWindow(QtWidgets.QMainWindow):
                 self.ui.typeTable.setItem(i, 2, QTableWidgetItem(str(info[i].description)))
             self.ui.typeTable.resizeRowsToContents()
 
-
-
         except Exception as e:
             print(f"An error occurred: {e}")
             import traceback
@@ -139,8 +137,6 @@ class MyWindow(QtWidgets.QMainWindow):
                 self.ui.roomTable.setItem(i, 1, QTableWidgetItem(str(info[i].room_name)))
                 self.ui.roomTable.setItem(i, 2, QTableWidgetItem(str(info[i].description)))
             self.ui.roomTable.resizeRowsToContents()
-
-
 
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -186,9 +182,6 @@ class MyWindow(QtWidgets.QMainWindow):
             item_id = self.ui.lineEdit.text()
 
             result = self.inventory_service.inventory_item(item_id)
-
-
-
 
             item = []
 
@@ -329,7 +322,16 @@ class MyWindow(QtWidgets.QMainWindow):
             name = self.ui.nameLine.text()
             type = self.ui.itemtypesBox.currentData()
             room = self.ui.itemroomBox.currentData()
+
+            if name is None or name.strip() == "":
+                self.ui.statusbar.showMessage("Ошибка: поле 'Название' не заполнено")
+                return
+
             item = self.inventory_service.add_entity("item", name, type, room)
+
+            if item is None:
+                self.ui.statusbar.showMessage("Ошибка, предмет не был создан")
+                return
 
             row_position = self.ui.itemsTable.rowCount()
             self.ui.itemsTable.insertRow(row_position)
@@ -343,6 +345,10 @@ class MyWindow(QtWidgets.QMainWindow):
 
             self.ui.itemsTable.resizeRowsToContents()
 
+        except EmptyFieldError as e:
+            self.ui.statusbar.showMessage(f"Поля ввода для добавления не были заполнены")
+            return
+
         except Exception as e:
             print(f"An error occurred: {e}")
             import traceback
@@ -351,9 +357,24 @@ class MyWindow(QtWidgets.QMainWindow):
     def create_type(self):
         try:
             name = self.ui.typenameLine.text()
-            type = self.ui.typecodeLine.text()
-            room = self.ui.typedescLine.text()
-            entity = self.inventory_service.add_entity("type", type, name, room)
+            type_id = self.ui.typecodeLine.text()
+            desc = self.ui.typedescLine.text()
+
+            if name is None or name.strip() == "":
+                self.ui.statusbar.showMessage("Ошибка: поле 'Название' не заполнено")
+                return
+            if type_id is None or type_id.strip() == "":
+                self.ui.statusbar.showMessage("Ошибка: поле 'Тип' не заполнено")
+                return
+            if desc is None or desc.strip() == "":
+                self.ui.statusbar.showMessage("Ошибка: поле 'Описание' не заполнено")
+                return
+
+            entity = self.inventory_service.add_entity("type", type_id, name, desc)
+
+            if entity is None:
+                self.ui.statusbar.showMessage(f"Id уже занят")
+                return
 
             row_position = self.ui.typeTable.rowCount()
             self.ui.typeTable.insertRow(row_position)
@@ -370,6 +391,12 @@ class MyWindow(QtWidgets.QMainWindow):
 
             self.fill_typebox()
 
+        except EntityCodeIsUsedException as e:
+            self.ui.statusbar.showMessage(f"Id уже занят")
+
+        except EmptyFieldError as e:
+            self.ui.statusbar.showMessage(f"Поля ввода для добавления не были заполнены")
+            return
 
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -381,6 +408,17 @@ class MyWindow(QtWidgets.QMainWindow):
             name = self.ui.roomnameLine.text()
             code = self.ui.roomcodeLine.text()
             desc = self.ui.roomdescLine.text()
+
+            if name is None or name.strip() == "":
+                self.ui.statusbar.showMessage("Ошибка: поле 'Название' не заполнено")
+                return
+            if code is None or code.strip() == "":
+                self.ui.statusbar.showMessage("Ошибка: поле 'Код' не заполнено")
+                return
+            if desc is None or desc.strip() == "":
+                self.ui.statusbar.showMessage("Ошибка: поле 'Описание' не заполнено")
+                return
+
             entity = self.inventory_service.add_entity("room", code, name, desc)
 
             row_position = self.ui.roomTable.rowCount()
@@ -398,6 +436,12 @@ class MyWindow(QtWidgets.QMainWindow):
 
             self.fill_roombox()
 
+        except EntityCodeIsUsedException as e:
+            self.ui.statusbar.showMessage(f"Код уже занят")
+
+        except EmptyFieldError as e:
+            self.ui.statusbar.showMessage(f"Поля ввода для добавления не были заполнены")
+            return
 
         except Exception as e:
             print(f"An error occurred: {e}")
