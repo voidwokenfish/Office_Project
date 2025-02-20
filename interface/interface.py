@@ -1,5 +1,5 @@
 from PyQt5.QtGui import QIntValidator
-from PyQt5.QtWidgets import QMainWindow, QHeaderView, QTableWidgetItem
+from PyQt5.QtWidgets import QMainWindow, QHeaderView, QTableWidgetItem, QMessageBox
 
 from services.exceptions import IncorrectItemError, EmptyFieldError
 from services.inventory_service import ItemInventoryService
@@ -22,6 +22,8 @@ class MyWindow(QtWidgets.QMainWindow):
         self.ui.currentInvTable.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.ui.progressBar.setValue(0)
         self.item_inventoried_tuple = ()
+        self.is_active_stage = False
+
 
         self.ui.startButton.clicked.connect(self.start_inventory)
         self.ui.inventoryIdButton.clicked.connect(self.inventory_item)
@@ -30,6 +32,7 @@ class MyWindow(QtWidgets.QMainWindow):
         self.ui.additemButton.clicked.connect(self.create_item)
         self.ui.addtypeButton.clicked.connect(self.create_type)
         self.ui.addroomButton.clicked.connect(self.create_room)
+        self.ui.inventoriesTable.itemDoubleClicked.connect(self.watch_items)
 
     def make_inactive_stage(self):
         self.ui.inventoryIdButton.setEnabled(False)
@@ -43,6 +46,8 @@ class MyWindow(QtWidgets.QMainWindow):
         self.ui.startButton.setEnabled(True)
         self.ui.startButton.setStyleSheet("opacity: 1;")
 
+        self.is_active_stage = False
+
     def make_active_stage(self):
         self.ui.inventoryIdButton.setEnabled(True)
         self.ui.inventoryIdButton.setStyleSheet("opacity: 1;")
@@ -54,6 +59,8 @@ class MyWindow(QtWidgets.QMainWindow):
         self.ui.lineEdit.setStyleSheet("opacity: 1;")
         self.ui.startButton.setEnabled(False)
         self.ui.startButton.setStyleSheet("opacity: 0.5;")
+
+        self.is_active_stage = True
 
     def setup_all_inv_tables(self):
         try:
@@ -142,6 +149,34 @@ class MyWindow(QtWidgets.QMainWindow):
             print(f"An error occurred: {e}")
             import traceback
             traceback.print_exc()
+
+    def watch_items(self):
+        """Смотрим предметы какой-то выбранной инвентаризацией"""
+        try:
+            selected_items = self.ui.inventoriesTable.selectedItems()
+            selected_row = selected_items[0].row()
+            inv_id = self.ui.inventoriesTable.item(selected_row, 0).text()
+
+            found_items, missing_items = self.inventory_service.get_inv_info(inv_id)
+            all_items = {**found_items, **missing_items}
+            self.ui.historyitemsTable.setRowCount(0)
+            for row, (item, status) in enumerate(all_items.items()):
+                self.ui.historyitemsTable.insertRow(row)
+                self.ui.historyitemsTable.setItem(row, 0, QTableWidgetItem(str(item.id)))
+                self.ui.historyitemsTable.setItem(row, 1, QTableWidgetItem(str(item.name)))
+                self.ui.historyitemsTable.setItem(row, 2, QTableWidgetItem(str(item.type)))
+                self.ui.historyitemsTable.setItem(row, 3, QTableWidgetItem(str(item.room)))
+                self.ui.historyitemsTable.setItem(row, 4, QTableWidgetItem(status))
+
+            self.ui.typeTable.resizeRowsToContents()
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            import traceback
+            traceback.print_exc()
+
+
+
 
 
     def start_inventory(self):
@@ -251,7 +286,6 @@ class MyWindow(QtWidgets.QMainWindow):
                     ])
             )
 
-            self.add_inv_results_to_table()
 
             self.make_inactive_stage()
 
@@ -277,16 +311,6 @@ class MyWindow(QtWidgets.QMainWindow):
 
         if cancel_widget.clickedButton() == yes_button:
             self.cancel_process()
-
-
-
-    def add_inv_results_to_table(self):
-        self.ui.lastInvTable.setRowCount(0)
-        for row_position, item in enumerate(self.item_inventoried_tuple):
-            self.ui.lastInvTable.insertRow(row_position)
-            for col, value in enumerate(item):
-                self.ui.lastInvTable.setItem(row_position, col, QtWidgets.QTableWidgetItem(value))
-
 
 
     def cancel_process(self):
@@ -421,6 +445,10 @@ class MyWindow(QtWidgets.QMainWindow):
 
             entity = self.inventory_service.add_entity("room", code, name, desc)
 
+            if entity is None:
+                self.ui.statusbar.showMessage(f"Id уже занят")
+                return
+
             row_position = self.ui.roomTable.rowCount()
             self.ui.roomTable.insertRow(row_position)
 
@@ -447,6 +475,34 @@ class MyWindow(QtWidgets.QMainWindow):
             print(f"An error occurred: {e}")
             import traceback
             traceback.print_exc()
+
+    def closeEvent(self, event):
+        if self.is_active_stage:
+            reply = QMessageBox.question(
+                self, "Выход", "Вы уверены, что хотите выйти? Инвентаризация будет отменена.",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+            )
+
+            if reply == QMessageBox.Yes:
+                self.cancel_process()
+                event.accept()
+            else:
+                event.ignore()
+
+        else:
+            reply = QMessageBox.question(
+                self, "Выход", "Вы уверены, что хотите выйти?",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+            )
+
+            if reply == QMessageBox.Yes:
+                event.accept()
+            else:
+                event.ignore()
+
+
+
+
 
 
 

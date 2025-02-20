@@ -13,7 +13,6 @@ class ItemInventoryService:
     total_items: int
 
     def __init__(self, item_repo: SqlItemRepository, room_repo: SqlRoomRepository, type_repo: SqlTypeRepository, item_inventory_repo: SqlInventoryRepository, all_inventories_repo: SqlAllInventoriesRepository):
-        self.inventoried_list = []
         self.total_items = 0
         self.item_inventory_repo = item_inventory_repo
         self.item_repo = item_repo
@@ -83,7 +82,7 @@ class ItemInventoryService:
             all_items = self.item_repo.list()
 
             found_items_ids = [
-                row[0]  # item_id
+                row.item_id  # item_id
                 for row in self.item_inventory_repo.list(inventory_id=self.inventory_id)
             ]
 
@@ -227,5 +226,41 @@ class ItemInventoryService:
             print(f"An error occurred: {e}")
             import traceback
             traceback.print_exc()
+
+
+
+    def get_inv_info(self, id):
+        """Получаем информацию о результатах любой проведенной инвентаризации"""
+        try:
+            inventory = self.all_inventories_repo.get(id)
+            if inventory:
+                inventoried_list = self.item_inventory_repo.list(inventory_id=inventory.id)
+
+                found_items_ids = {row.item_id for row in inventoried_list}
+
+                all_items = self.item_repo.list()
+
+                found_items = {}
+                missing_items = {}
+
+                for item in all_items:
+                    if item.id in found_items_ids:
+                        found_items[item] = "Найден"
+                    else:
+                        missing_items[item] = "Не найден"
+
+                return (
+                    dict(sorted(found_items.items(), key=lambda x: x[0].id)),
+                    dict(sorted(missing_items.items(), key=lambda x: x[0].id))
+                )
+            else:
+                raise InventoryNotFoundException
+
+        except InventoryNotFoundException as e:
+            print(f"An error occurred: {e}")
+            import traceback
+            traceback.print_exc()
+
+
 
 

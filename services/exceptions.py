@@ -12,3 +12,6 @@ class IdAlreadyInventoriedException(Exception):
 
 class EntityCodeIsUsedException(Exception):
     pass
+
+class InventoryNotFoundException(Exception):
+    pass
